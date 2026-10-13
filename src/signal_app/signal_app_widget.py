@@ -35,7 +35,8 @@ class SignalAppWidget(QWidget):
             self.signal_window_chart.set_axis_y, type=Qt.BlockingQueuedConnection
         )
         self.chart_update_data.connect(
-            self.signal_window_chart.replace_array, type=Qt.BlockingQueuedConnection
+            #self.signal_window_chart.replace_array, type=Qt.BlockingQueuedConnection
+            self.signal_window_chart.update_plot, type=Qt.BlockingQueuedConnection
         )
 
         # Add buttons to start and stop the signal analyzer.

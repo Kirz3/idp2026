@@ -10,11 +10,16 @@
 import logging
 import time
 
+import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.backends.backend_qtagg import FigureCanvas
+from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.qt_compat import QtWidgets
+from matplotlib.figure import Figure
 from PySide6.QtCharts import QChart, QChartView, QLineSeries, QValueAxis
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QPainter
-from PySide6.QtWidgets import QHBoxLayout, QSizePolicy, QWidget
+from PySide6.QtWidgets import QVBoxLayout, QSizePolicy, QWidget
 
 logger = logging.getLogger(__name__)
 
@@ -23,14 +28,30 @@ class SignalWindowChartWidget(QWidget):
     def __init__(self):
         super().__init__()
 
+        layout = QVBoxLayout(self)
+
+        self.dynamic_canvas = FigureCanvas(Figure(figsize=(10, 3)))
+        self._dynamic_ax = self.dynamic_canvas.figure.subplots()
+        self._dynamic_line, = self._dynamic_ax.plot([], [])
+
+        self._dynamic_ax.grid(visible=True, which="both", axis="both", linestyle=":", linewidth=0.5)
+        self._dynamic_ax.set_xlabel("Time")
+        self._dynamic_ax.set_ylabel("Amplitude")
+        self._dynamic_ax.set_title("Signal")
+
+        layout.addWidget(self.dynamic_canvas)
+        layout.addWidget(NavigationToolbar(self.dynamic_canvas, self))
+
+
+        """
         # Keep linters happy by setting class fields in the __init__
         self.series: QLineSeries | None = None
         self.axis_x: QValueAxis | None = None
         self.axis_y: QValueAxis | None = None
 
         self.chart = QChart()
-        # self.chart.setAnimationOptions(QChart.AllAnimations)
-        # self.chart.setAnimationDuration(50)
+        self.chart.setAnimationOptions(QChart.AllAnimations)
+        self.chart.setAnimationDuration(50)
         self.add_series("Amplitude")
 
         self.chart_view = QChartView(self.chart)
@@ -42,11 +63,22 @@ class SignalWindowChartWidget(QWidget):
         self.main_layout.addWidget(self.chart_view)
 
         self.setLayout(self.main_layout)
+        """
+
+    def update_plot(self, x:np.ndarray, y:np.ndarray):
+        #currently plotting every 5th data point
+        self._dynamic_line.set_data(x[::5], y[::5])
+        self._dynamic_ax.set_xlim(x.min() -5, x.max())
+        self._dynamic_ax.relim()
+        self._dynamic_ax.autoscale_view(scalex=False, scaley=True)
+        self.dynamic_canvas.draw_idle()
 
     @Slot(float, float)
     def set_axis_y(self, min_y: float, max_y: float):
-        self.axis_y.setMin(min_y)
-        self.axis_y.setMax(max_y)
+        #self.axis_y.setMin(min_y)
+        #self.axis_y.setMax(max_y)
+        self._dynamic_ax.set_ylim(min_y, max_y)
+        self.dynamic_canvas.draw_idle()
 
     def add_series(self, name: str):
         self.series = QLineSeries()
