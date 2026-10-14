@@ -71,8 +71,8 @@ class SignalWindowChartWidget(QWidget):
         """
 
     def update_plot(self, x:np.ndarray, y:np.ndarray):
-        #currently plotting every 5th data point
-        self._dynamic_line.set_data(x[::5], y[::5])
+        #currently plotting every 10th data point
+        self._dynamic_line.set_data(x[::10], y[::10])
         self._dynamic_ax.set_xlim(x.min() -5, x.max())
         self._dynamic_ax.relim()
         self._dynamic_ax.autoscale_view(scalex=False, scaley=True)
