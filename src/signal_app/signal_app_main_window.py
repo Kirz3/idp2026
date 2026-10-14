@@ -5,6 +5,9 @@
 # https://doc.qt.io/qtforpython-6/tutorials/index.html
 # https://doc.qt.io/qtforpython-6/tutorials/expenses/expenses.html
 
+# Sovelluksen pääikkuna, jonka kautta käyttäjä voi avata signaalitiedostoja,
+# muuntaa CSV-tiedostoja NPY-muotoon ja näyttää signaalin SignalAppWidget-komponentissa.
+
 import logging
 import sys
 from pathlib import Path

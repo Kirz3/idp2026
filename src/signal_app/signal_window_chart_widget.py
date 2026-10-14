@@ -19,6 +19,12 @@ from PySide6.QtWidgets import QHBoxLayout, QSizePolicy, QWidget
 logger = logging.getLogger(__name__)
 
 
+# Muuntaa CSV-muodossa olevan signaalitiedoston binääriseen muotoon.
+# Muunnos tehdään rivi kerrallaan, jotta suurta signaalitiedostoa ei tarvitse
+# ladata kokonaan muistiin. Muunnoksen etenemistä voidaan seurata ja muunnos
+# voidaan myös peruuttaa.
+
+
 class SignalWindowChartWidget(QWidget):
     def __init__(self):
         super().__init__()

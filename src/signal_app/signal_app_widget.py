@@ -13,6 +13,10 @@ from signal_app.signal_window_chart_widget import SignalWindowChartWidget
 from signal_app.worker import Worker
 
 
+# Sovelluksen pääasiallinen käyttöliittymä signaalin tarkasteluun.
+# Näyttää signaalin kuvaajassa ja tarjoaa painikkeet signaalin analysointiin
+# sekä eri signaali-ikkunoiden välillä liikkumiseen.
+
 class SignalAppWidget(QWidget):
     # File path for the signal data
     signal_path: Path | None = None
