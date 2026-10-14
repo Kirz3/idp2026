@@ -10,16 +10,15 @@
 import logging
 import time
 
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
-from matplotlib.backends.qt_compat import QtWidgets
 from matplotlib.figure import Figure
-from PySide6.QtCharts import QChart, QChartView, QLineSeries, QValueAxis
+#from PySide6.QtCharts import QChart, QChartView, QLineSeries, QValueAxis
 from PySide6.QtCore import Qt, Slot
-from PySide6.QtGui import QPainter
-from PySide6.QtWidgets import QVBoxLayout, QSizePolicy, QWidget
+#from PySide6.QtGui import QPainter
+from PySide6.QtWidgets import QVBoxLayout, QWidget
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +79,7 @@ class SignalWindowChartWidget(QWidget):
         self._dynamic_ax.set_ylim(min_y, max_y)
         self.dynamic_canvas.draw_idle()
 
+"""
     def add_series(self, name: str):
         self.series = QLineSeries()
         self.series.setName(name)
@@ -99,7 +99,8 @@ class SignalWindowChartWidget(QWidget):
         self.axis_y.setTitleText("Amplitude")
         self.chart.addAxis(self.axis_y, Qt.AlignLeft)
         self.series.attachAxis(self.axis_y)
-
+"""
+"""
     @Slot(np.ndarray, np.ndarray)
     def replace_array(
         self,
@@ -138,3 +139,4 @@ class SignalWindowChartWidget(QWidget):
         logger.debug(
             "Finished updating chart in %.2f ms", (end_time - start_time) * 1000
         )
+"""
