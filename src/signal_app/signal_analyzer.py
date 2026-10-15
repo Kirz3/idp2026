@@ -6,6 +6,7 @@ import logging
 import time
 from collections.abc import Iterator
 from pathlib import Path
+from signal_app.signal_peak_detector import SignalPeakDetector
 
 import numpy as np
 from PySide6.QtCore import Signal
@@ -43,6 +44,10 @@ class SignalAnalyzer:
         self.y_max = -np.inf  # Use ridiculous values to force y-scale change
         # Alustetaan y-akselin pienin arvo mahdollisimman suureksi.
         self.y_min = np.inf
+        # Alustetaan signaalipiikkien tunnistin.
+        self.peak_detector = SignalPeakDetector(noise_multiplier=6.0)
+        # Tallennetaan tunnistettujen piikkien indeksit.
+        self.peak_indices = np.array([], dtype=int)
 
 
 
@@ -277,6 +282,18 @@ class SignalAnalyzer:
         self.x_array, self.y_array = self._read_signal_at(start_x, end_x)
         self.x_array = self.x_array / 50000
         self.y_array = self.y_array[:, 1]
+
+        # DETECTION ALGORITHM(s)
+        # Tunnistetaan signaalipiikit nykyisestä signaali-ikkunasta.
+        # Regocnize signalpeaks from signal window 
+        self.peak_indices = self.peak_detector.detect_peaks(self.y_array)
+
+        logger.debug(
+            "Detected %d peaks in the current signal window.",
+            len(self.peak_indices),
+        )
+        #Test comment
+    
 
         # Tähän kohtaan voidaan lisätä signaalin tunnistusalgoritmit!!!
         # DETECTION ALGORITHMS
