@@ -20,6 +20,7 @@ from PySide6.QtCharts import QChart, QChartView, QLineSeries, QValueAxis
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QPainter
 from PySide6.QtWidgets import QVBoxLayout, QSizePolicy, QWidget
+from signal_app.detection_markers import DetectionMarkers
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,8 @@ class SignalWindowChartWidget(QWidget):
         self.dynamic_canvas = FigureCanvas(Figure(figsize=(10, 3)))
         self._dynamic_ax = self.dynamic_canvas.figure.subplots()
         self._dynamic_line, = self._dynamic_ax.plot([], [])
+
+        self.detection_markers= DetectionMarkers(self._dynamic_ax)
 
         self._dynamic_ax.grid(visible=True, which="both", axis="both", linestyle=":", linewidth=0.5)
         self._dynamic_ax.set_xlabel("Time")
@@ -65,13 +68,55 @@ class SignalWindowChartWidget(QWidget):
         self.setLayout(self.main_layout)
         """
 
-    def update_plot(self, x:np.ndarray, y:np.ndarray):
-        #currently plotting every 5th data point
-        self._dynamic_line.set_data(x[::5], y[::5])
-        self._dynamic_ax.set_xlim(x.min() -5, x.max())
+   
+   
+    
+    def update_plot(self, x: np.ndarray, y: np.ndarray):
+        if len(x) == 0 or len(y) == 0:
+            return
+
+        # Otetaan joka viides piste
+        plot_x = x[::5]
+        plot_y = y[::5]
+
+        # Poistetaan NaN- ja Inf-arvot piirrettävistä pisteistä
+        valid = np.isfinite(plot_x) & np.isfinite(plot_y)
+        plot_x = plot_x[valid]
+        plot_y = plot_y[valid]
+
+        if len(plot_y) == 0:
+            return
+
+        # Piirretään signaali
+        self._dynamic_line.set_data(plot_x, plot_y)
+
+        # Päivitetään akselit
+        self._dynamic_ax.set_xlim(plot_x.min(), plot_x.max())
         self._dynamic_ax.relim()
-        self._dynamic_ax.autoscale_view(scalex=False, scaley=True)
+        self._dynamic_ax.autoscale_view(
+            scalex=False,
+            scaley=True
+        )
+
+        self._dynamic_ax.set_ylim(
+            plot_y.min() - 100,
+            plot_y.max() + 100
+        )
+
         self.dynamic_canvas.draw_idle()
+
+
+
+
+
+    #välittää havaintojen sijainnit detectionmarkers luokalle ja päivittää kuvaajan. 
+    
+    # Päivittää havaintomerkit kuvaajassa.
+    def update_markers(self, x: np.ndarray, y: np.ndarray):
+        self.detection_markers.update(x, y)
+        self.dynamic_canvas.draw_idle()
+
+
 
     @Slot(float, float)
     def set_axis_y(self, min_y: float, max_y: float):
