@@ -39,6 +39,8 @@ class SignalWindowChartWidget(QWidget):
         self._dynamic_ax = self.dynamic_canvas.figure.subplots()
         self._dynamic_line, = self._dynamic_ax.plot([], [])
 
+        #Luodaan kuvaajaan punaiset merkit tunnistettuja signaalipiikkejä varten. 
+        # Create markers for displaying detected signal peaks on the chart.
         self.detection_markers= DetectionMarkers(self._dynamic_ax)
 
         self._dynamic_ax.grid(visible=True, which="both", axis="both", linestyle=":", linewidth=0.5)
@@ -77,8 +79,11 @@ class SignalWindowChartWidget(QWidget):
             return
 
         # Piirretään joka kymmenes piste (Jennin muutos)
-        plot_x = x[::10]
-        plot_y = y[::10]
+        # Käytetään SignalAnalyzer-luokalta saatua signaalidataa kuvaajan piirtämiseen.7 Julia 18.10.
+        # Use the signal data provided by SignalAnalyzer to draw the chart.
+
+        plot_x = x
+        plot_y = y
 
         # Poistetaan epäkelvot arvot
         valid = np.isfinite(plot_x) & np.isfinite(plot_y)
@@ -110,14 +115,19 @@ class SignalWindowChartWidget(QWidget):
     #välittää havaintojen sijainnit detectionmarkers luokalle ja päivittää kuvaajan. 
     
     # Päivittää havaintomerkit kuvaajassa.
+    # Update the detected peak markers and display the peak count in the chart title.
     def update_markers(self, x: np.ndarray, y: np.ndarray):
         self.detection_markers.update(x, y)
+        self._dynamic_ax.set_title(f"Signal – Detected peaks: {len(x)}")
         self.dynamic_canvas.draw_idle()
+        
 
 
 
     @Slot(float, float)
     def set_axis_y(self, min_y: float, max_y: float):
+        if not np.isfinite(min_y) or not np.isfinite(max_y):
+            return
         #self.axis_y.setMin(min_y)
         #self.axis_y.setMax(max_y)
         self._dynamic_ax.set_ylim(min_y, max_y)
