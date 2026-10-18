@@ -6,6 +6,7 @@ import logging
 import time
 from collections.abc import Iterator
 from pathlib import Path
+from signal_app.signal_peak_detector import SignalPeakDetector
 
 import numpy as np
 from PySide6.QtCore import Signal
@@ -14,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class SignalAnalyzer:
+     # Vastaa signaalitiedoston lukemisesta, käsittelystä ja käyttöliittymälle välittämisestä.
     """
     A "signal analyzer" that just generates an array of cosine function values.
 
@@ -22,16 +24,32 @@ class SignalAnalyzer:
     """
 
     def __init__(self):
+        # Käsiteltävän signaalitiedoston polku.
         self.signal_path = None
+        # Muutetaan tila sellaiseksi, että käsittelysilmukka lopettaa.
         self.running = False
+        # Näytettävän signaali-ikkunan koko näytteiden lukumääränä.
         self.window_size = 600 * 50000  # Let's take 10 minutes of the signal
+        # Signaali luetaan tiedostosta tämän kokoisina paloina.
         self.chunk_size = 500000  # ten second at a time
+        # Nykyisen signaali-ikkunan aloituskohta.
         self.x = 0
+        # Signaalin suurin käytettävissä oleva x-arvo.
         self.max_x = 0
+        # Taulukko signaalin x-akselin arvoille.
         self.x_array = np.zeros((self.window_size,))
+        # Taulukko signaalin y-arvoille; aluksi arvot ovat NaN-arvoja.
         self.y_array = np.zeros_like(self.x_array) * np.nan
+        # Alustetaan y-akselin suurin arvo mahdollisimman pieneksi.
         self.y_max = -np.inf  # Use ridiculous values to force y-scale change
+        # Alustetaan y-akselin pienin arvo mahdollisimman suureksi.
         self.y_min = np.inf
+        # Alustetaan signaalipiikkien tunnistin.
+        self.peak_detector = SignalPeakDetector(noise_multiplier=6.0)
+        # Tallennetaan tunnistettujen piikkien indeksit.
+        self.peak_indices = np.array([], dtype=int)
+
+
 
     def _read_signal(self, chunk_size: int = 1) -> Iterator[np.ndarray]:
         """
@@ -52,6 +70,7 @@ class SignalAnalyzer:
             print(f"""signal path "{self.signal_path}" is not a valid file.""")
             return
 
+       # Valitaan tiedoston lukutapa tiedostopäätteen perusteella.
         match self.signal_path.suffix.lower():
             case ".csv":
                 with self.signal_path.open("r") as signal_file:
@@ -84,6 +103,7 @@ class SignalAnalyzer:
                         np.float64
                     )
 
+     # Lukee signaalista tietyn x-koordinaattien välisen osan.
     def _read_signal_at(self, start_x, end_x) -> tuple[np.ndarray, np.ndarray]:
         logger.debug("Read signal from %s to %s", start_x, end_x)
         x_array = np.linspace(start_x, end_x - 1, end_x - start_x)
@@ -166,6 +186,7 @@ class SignalAnalyzer:
         while self.running:
             self.x = -self.window_size
 
+           # Käsitellään signaalia niin kauan kuin käsittely on käynnissä.
             end_time = time.time()
             for chunk in self._read_signal(self.chunk_size):
                 # Record iteration start time
@@ -205,6 +226,8 @@ class SignalAnalyzer:
 
                 # Uh oh, we quickly notice that plotting this many points is downright unfeasible. Let's reduce the
                 # load for visualization by selecting only every 100th value in the arrays.
+                # Poimitaan kuvaajaa varten vain joka sadas arvo, jotta piirtäminen olisi kevyempää.
+                # HUOM tarviiko tätä kohtaa muokata
                 vis_x = self.x_array[
                     ::100
                 ].copy()  # these array slice views seem to go missing if not copied
@@ -235,6 +258,7 @@ class SignalAnalyzer:
             # Stop while-loop when the file ends
             self.running = False
 
+    # Lataa tietyn signaali-ikkunan ja välittää sen kuvaajalle.
     def load_window(
         self,
         start_x: int,
@@ -259,6 +283,19 @@ class SignalAnalyzer:
         self.x_array = self.x_array / 50000
         self.y_array = self.y_array[:, 1]
 
+        # DETECTION ALGORITHM(s)
+        # Tunnistetaan signaalipiikit nykyisestä signaali-ikkunasta.
+        # Regocnize signalpeaks from signal window 
+        self.peak_indices = self.peak_detector.detect_peaks(self.y_array)
+
+        logger.debug(
+            "Detected %d peaks in the current signal window.",
+            len(self.peak_indices),
+        )
+        #Test comment
+    
+
+        # Tähän kohtaan voidaan lisätä signaalin tunnistusalgoritmit!!!
         # DETECTION ALGORITHMS
 
         # Update y-axis min/max if need be:
@@ -278,8 +315,10 @@ class SignalAnalyzer:
         if update_chart:
             update_chart.emit(vis_x, vis_y)
 
+        # Tähän kohtaan voidaan lisätä tunnistuskohtia kuvaajaan!!!
         # ADD MARKERS TO CHART
 
+    # Lataa parhaillaan valittuna olevan signaali-ikkunan uudelleen.
     def current_window(
         self,
         signal_path: Path,
@@ -295,6 +334,8 @@ class SignalAnalyzer:
             update_chart,
             progress_callback,
         )
+
+        # ikkunoiden käsittely
 
     def previous_window(
         self,

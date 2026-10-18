@@ -10,19 +10,23 @@
 import logging
 import time
 
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
-from matplotlib.backends.qt_compat import QtWidgets
 from matplotlib.figure import Figure
-from PySide6.QtCharts import QChart, QChartView, QLineSeries, QValueAxis
+#from PySide6.QtCharts import QChart, QChartView, QLineSeries, QValueAxis
 from PySide6.QtCore import Qt, Slot
-from PySide6.QtGui import QPainter
-from PySide6.QtWidgets import QVBoxLayout, QSizePolicy, QWidget
+from PySide6.QtWidgets import QVBoxLayout, QWidget
 from signal_app.detection_markers import DetectionMarkers
 
 logger = logging.getLogger(__name__)
+
+
+# Muuntaa CSV-muodossa olevan signaalitiedoston binääriseen muotoon.
+# Muunnos tehdään rivi kerrallaan, jotta suurta signaalitiedostoa ei tarvitse
+# ladata kokonaan muistiin. Muunnoksen etenemistä voidaan seurata ja muunnos
+# voidaan myös peruuttaa.
 
 
 class SignalWindowChartWidget(QWidget):
@@ -68,18 +72,15 @@ class SignalWindowChartWidget(QWidget):
         self.setLayout(self.main_layout)
         """
 
-   
-   
-    
     def update_plot(self, x: np.ndarray, y: np.ndarray):
         if len(x) == 0 or len(y) == 0:
             return
 
-        # Otetaan joka viides piste
-        plot_x = x[::5]
-        plot_y = y[::5]
+        # Piirretään joka kymmenes piste (Jennin muutos)
+        plot_x = x[::10]
+        plot_y = y[::10]
 
-        # Poistetaan NaN- ja Inf-arvot piirrettävistä pisteistä
+        # Poistetaan epäkelvot arvot
         valid = np.isfinite(plot_x) & np.isfinite(plot_y)
         plot_x = plot_x[valid]
         plot_y = plot_y[valid]
@@ -87,10 +88,7 @@ class SignalWindowChartWidget(QWidget):
         if len(plot_y) == 0:
             return
 
-        # Piirretään signaali
         self._dynamic_line.set_data(plot_x, plot_y)
-
-        # Päivitetään akselit
         self._dynamic_ax.set_xlim(plot_x.min(), plot_x.max())
         self._dynamic_ax.relim()
         self._dynamic_ax.autoscale_view(
@@ -125,6 +123,7 @@ class SignalWindowChartWidget(QWidget):
         self._dynamic_ax.set_ylim(min_y, max_y)
         self.dynamic_canvas.draw_idle()
 
+"""
     def add_series(self, name: str):
         self.series = QLineSeries()
         self.series.setName(name)
@@ -144,7 +143,8 @@ class SignalWindowChartWidget(QWidget):
         self.axis_y.setTitleText("Amplitude")
         self.chart.addAxis(self.axis_y, Qt.AlignLeft)
         self.series.attachAxis(self.axis_y)
-
+"""
+"""
     @Slot(np.ndarray, np.ndarray)
     def replace_array(
         self,
@@ -183,3 +183,4 @@ class SignalWindowChartWidget(QWidget):
         logger.debug(
             "Finished updating chart in %.2f ms", (end_time - start_time) * 1000
         )
+"""
