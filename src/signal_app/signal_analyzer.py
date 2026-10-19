@@ -6,7 +6,7 @@ import logging
 import time
 from collections.abc import Iterator
 from pathlib import Path
-from signal_app.signal_peak_detector import SignalPeakDetector
+from signal_app.SignalPeakDetector import SignalPeakDetector
 
 import numpy as np
 from PySide6.QtCore import Signal
@@ -170,6 +170,7 @@ class SignalAnalyzer:
         set_chart_axis_y: Signal | None = None,
         update_chart: Signal | None = None,
         progress_callback: Signal | None = None,
+        update_markers: Signal | None = None,
     ):
         """
         Starts the SignalAnalyzer main loop.
@@ -212,6 +213,23 @@ class SignalAnalyzer:
                 ]  # replace the last `chunk_size` entries with `chunk`
                 self.x += chunk_size
 
+                
+                # Poimitaan signaalista vain kelvolliset arvot.
+                valid_indices = np.flatnonzero(np.isfinite(self.y_array))
+                valid_signal = self.y_array[valid_indices]
+
+                # Tunnistetaan piikit Jennin algoritmilla.
+                detected_indices = self.peak_detector.detect_peaks(valid_signal)
+                print("Signaalin suurin arvo:", np.max(valid_signal))
+                print("Tunnistettuja piikkejä:", len(detected_indices))
+
+                # Muutetaan indeksit takaisin alkuperäisen signaalin indekseiksi.
+                self.peak_indices = valid_indices[detected_indices]
+                print("Piikkien indeksit:", self.peak_indices)
+                print("Piikkien arvot:", self.y_array[self.peak_indices])
+                print("Piikkien ajat:", self.x_array[self.peak_indices])
+
+                
                 # Update y-axis min/max if need be:
                 self.y_min = (
                     y_min
@@ -228,10 +246,22 @@ class SignalAnalyzer:
                 # load for visualization by selecting only every 100th value in the arrays.
                 # Poimitaan kuvaajaa varten vain joka sadas arvo, jotta piirtäminen olisi kevyempää.
                 # HUOM tarviiko tätä kohtaa muokata
-                vis_x = self.x_array[
-                    ::100
-                ].copy()  # these array slice views seem to go missing if not copied
-                vis_y = self.y_array[::100].copy()
+                
+                  # these array slice views seem to go missing if not copied
+                
+                # Keep the regularly sampled points for efficient signal visualization.
+                # Also include all detected peak indices so that peak locations are
+                # not lost when the signal is downsampled for plotting.
+                vis_indices = np.unique(
+                    np.concatenate((
+                        np.arange(0, len(self.y_array), 100),
+                        self.peak_indices
+                    ))
+                )
+
+                vis_x = self.x_array[vis_indices].copy()
+                vis_y = self.y_array[vis_indices].copy()
+
 
                 logger.debug(
                     "Computation done in %.2f ms", (time.time() - start_time) * 1000
@@ -244,6 +274,13 @@ class SignalAnalyzer:
                 # This signal will now block the thread until chart update is finished
                 if update_chart:
                     update_chart.emit(vis_x, vis_y)
+
+            # Lähetetään tunnistettujen piikkien sijainnit kuvaajalle.
+            # Send the detected peak coordinates to the chart markers.
+                if update_markers:
+                    peak_x = self.x_array[self.peak_indices]
+                    peak_y = self.y_array[self.peak_indices]
+                    update_markers.emit(peak_x, peak_y)
 
                 if progress_callback:
                     # This loop has no meaningful progress.
@@ -267,6 +304,7 @@ class SignalAnalyzer:
         set_chart_axis_y: Signal | None = None,
         update_chart: Signal | None = None,
         progress_callback: Signal | None = None,
+        update_markers: Signal | None = None,
     ):
         """Loads a signal window.
         :param start_x: the start of the window
@@ -286,7 +324,20 @@ class SignalAnalyzer:
         # DETECTION ALGORITHM(s)
         # Tunnistetaan signaalipiikit nykyisestä signaali-ikkunasta.
         # Regocnize signalpeaks from signal window 
+
+        # Print the indices and coordinates of detected peaks
+        # to help verify the detection results.
+
         self.peak_indices = self.peak_detector.detect_peaks(self.y_array)
+        print("detected peaks:", len(self.peak_indices))
+        print("peak indices:", self.peak_indices)
+        print("peak cordinates:",
+        list(zip(
+        self.x_array[self.peak_indices],
+        self.y_array[self.peak_indices]
+    ))
+)
+
 
         logger.debug(
             "Detected %d peaks in the current signal window.",
@@ -306,14 +357,29 @@ class SignalAnalyzer:
             y_max if (y_max := np.nanmax(self.y_array)) > self.y_max else self.y_max
         )
 
-        vis_x = self.x_array[::100]
-        vis_y = self.y_array[::100]
+        vis_indices = np.unique(
+        np.concatenate((
+        np.arange(0, len(self.y_array), 100),
+        self.peak_indices
+    ))
+)
+
+        vis_x = self.x_array[vis_indices].copy()
+        vis_y = self.y_array[vis_indices].copy()
 
         if set_chart_axis_y:
             set_chart_axis_y.emit(self.y_min, self.y_max)
 
         if update_chart:
             update_chart.emit(vis_x, vis_y)
+
+                
+        if update_markers:
+            peak_x = self.x_array[self.peak_indices]
+            peak_y = self.y_array[self.peak_indices]
+            update_markers.emit(peak_x, peak_y)  
+           
+
 
         # Tähän kohtaan voidaan lisätä tunnistuskohtia kuvaajaan!!!
         # ADD MARKERS TO CHART
@@ -325,6 +391,7 @@ class SignalAnalyzer:
         set_chart_axis_y: Signal | None = None,
         update_chart: Signal | None = None,
         progress_callback: Signal | None = None,
+        update_markers: Signal | None = None,
     ):
         self.load_window(
             self.x,
@@ -333,6 +400,7 @@ class SignalAnalyzer:
             set_chart_axis_y,
             update_chart,
             progress_callback,
+            update_markers,
         )
 
         # ikkunoiden käsittely
@@ -343,6 +411,7 @@ class SignalAnalyzer:
         set_chart_axis_y: Signal | None = None,
         update_chart: Signal | None = None,
         progress_callback: Signal | None = None,
+        update_markers: Signal | None = None,
     ):
         self.x = self.x - self.window_size if self.x > self.window_size else 0
         self.load_window(
@@ -352,6 +421,7 @@ class SignalAnalyzer:
             set_chart_axis_y,
             update_chart,
             progress_callback,
+            update_markers,
         )
 
     def next_window(
@@ -360,6 +430,7 @@ class SignalAnalyzer:
         set_chart_axis_y: Signal | None = None,
         update_chart: Signal | None = None,
         progress_callback: Signal | None = None,
+        update_markers: Signal | None = None,
     ):
         self.x = (
             self.x + self.window_size
@@ -373,6 +444,7 @@ class SignalAnalyzer:
             set_chart_axis_y,
             update_chart,
             progress_callback,
+            update_markers,
         )
 
     def has_previous_window(self):
