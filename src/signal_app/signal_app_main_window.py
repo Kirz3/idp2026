@@ -47,7 +47,7 @@ class SignalAppMainWindow(QMainWindow):
 
         self.signal_app_widget = SignalAppWidget()
         self.setCentralWidget(self.signal_app_widget)
-        self.setWindowTitle("Signal app template")
+        self.setWindowTitle("Signal App")
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.signal_app_widget.stop_signal_analyser()

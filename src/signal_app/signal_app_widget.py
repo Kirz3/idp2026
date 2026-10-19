@@ -24,6 +24,10 @@ class SignalAppWidget(QWidget):
     # Signals for SignalAnalyzer callbacks
     chart_set_axis_y = Signal(float, float)
     chart_update_data = Signal(np.ndarray, np.ndarray)
+    # Signal for passing detected peak coordinates to the chart.
+    chart_update_markers = Signal(np.ndarray, np.ndarray)
+    ## Välittää tunnistettujen signaalipiikkien x- ja y-koordinaatit kuvaajalle.
+
 
     def __init__(self):
         super().__init__()
@@ -42,6 +46,12 @@ class SignalAppWidget(QWidget):
             #self.signal_window_chart.replace_array, type=Qt.BlockingQueuedConnection
             self.signal_window_chart.update_plot, type=Qt.BlockingQueuedConnection
         )
+        # Connect the detected peak signal to the chart's marker update method.
+        self.chart_update_markers.connect(
+        self.signal_window_chart.update_markers,
+        type=Qt.BlockingQueuedConnection
+        )
+        #Yhdistetään marker-signaali kuvaajan merkkien päivitysmetodiin.
 
         # Add buttons to start and stop the signal analyzer.
         self.start_button = QPushButton("Start")
@@ -94,6 +104,7 @@ class SignalAppWidget(QWidget):
             signal_path=self.signal_path,
             set_chart_axis_y=self.chart_set_axis_y,
             update_chart=self.chart_update_data,
+            update_markers=self.chart_update_markers,
         )
 
         # Worker-class defines a "signals"-field that is a WorkerSignal-instance.
@@ -118,6 +129,9 @@ class SignalAppWidget(QWidget):
             signal_path=self.signal_path,
             set_chart_axis_y=self.chart_set_axis_y,
             update_chart=self.chart_update_data,
+        # Pass the marker update signal to SignalAnalyzer
+        # so detected peaks can be displayed on the chart.
+            update_markers=self.chart_update_markers,
         )
         worker.signals.finished.connect(self._updated_window_signal_analyzer)
         self.threadpool.start(worker)
@@ -129,6 +143,7 @@ class SignalAppWidget(QWidget):
             signal_path=self.signal_path,
             set_chart_axis_y=self.chart_set_axis_y,
             update_chart=self.chart_update_data,
+            update_markers=self.chart_update_markers,
         )
         worker.signals.finished.connect(self._updated_window_signal_analyzer)
         self.threadpool.start(worker)
@@ -140,6 +155,7 @@ class SignalAppWidget(QWidget):
             signal_path=self.signal_path,
             set_chart_axis_y=self.chart_set_axis_y,
             update_chart=self.chart_update_data,
+            update_markers=self.chart_update_markers,
         )
         worker.signals.finished.connect(self._updated_window_signal_analyzer)
         self.threadpool.start(worker)
