@@ -46,17 +46,25 @@ class SignalConverter:
 
         # This is terrible: read each row from the file to count the number of rows
         row_count = 0
-        with source_signal_path.open() as source_signal_file:
+
+         with source_signal_path.open("r", newline="") as source_signal_file:
             reader = csv.reader(source_signal_file)
-            next(reader)
-            for row in csv.reader(source_signal_file):
+            next(reader, None)
+
+            for row in reader:
                 if not row:
                     continue
+
                 row_count += 1
 
-                # Was the process cancelled during our reading?
                 if self.cancelled:
                     return False
+
+                 # Handle an empty CSV file.
+        if row_count == 0:
+            if progress_callback:
+                progress_callback.emit(100)
+            return True
 
         # Open a memory mapped binary file for writing. Set data type to 16-bit integers. Save both adc1 and adc2
         # in their own columns as in the original file. Order refers to C and Fortran conventions of multidimensional
@@ -75,9 +83,16 @@ class SignalConverter:
         # Read the CSV-file row-by-row writing it into the binary data file. This approach is slow, but it allows full
         # control of the reading process - every 50000 points or 1 second of data, the progress bar is updated.
         # Using some other reader that allows larger chunks could be more efficient than this.
-        with source_signal_path.open() as source_signal_file:
-            reader = csv.reader(source_signal_file)
-            next(reader)
+         try:
+            # Read the CSV file and write its data to the binary file.
+            data_index = 0
+
+          with source_signal_path.open(
+                "r", newline=""
+            ) as source_signal_file:
+                reader = csv.reader(source_signal_file)
+                next(reader, None)
+
             for index, row in enumerate(reader):
                 if not row:
                     continue
