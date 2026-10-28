@@ -7,6 +7,7 @@ import time
 from collections.abc import Iterator
 from pathlib import Path
 from signal_app.SignalPeakDetector import SignalPeakDetector
+from signal_app.signal_preprocessing import preprocess
 
 import numpy as np
 from PySide6.QtCore import Signal
@@ -220,6 +221,7 @@ class SignalAnalyzer:
 
                 # Tunnistetaan piikit Jennin algoritmilla.
                 detected_indices = self.peak_detector.detect_peaks(valid_signal)
+
                 print("Signaalin suurin arvo:", np.max(valid_signal))
                 print("Tunnistettuja piikkejä:", len(detected_indices))
 
