@@ -9,6 +9,7 @@ from pathlib import Path
 from signal_app.SignalPeakDetector import SignalPeakDetector
 
 import numpy as np
+from signal_app.signal_preprocessing import preprocess, good_samples
 from PySide6.QtCore import Signal
 
 logger = logging.getLogger(__name__)
@@ -324,6 +325,9 @@ class SignalAnalyzer:
         self.x_array = self.x_array / 50000
         self.y_array = self.y_array[:, 1]
 
+        # PREPROCESSING: baseline removal (smoothing is off until the detector is updated)
+        self.y_array = preprocess(self.y_array, smooth_ms=0)
+
         # DETECTION ALGORITHM(s)
         # Tunnistetaan signaalipiikit nykyisestä signaali-ikkunasta.
         # Regocnize signalpeaks from signal window 
@@ -332,6 +336,9 @@ class SignalAnalyzer:
         # to help verify the detection results.
 
         self.peak_indices = self.peak_detector.detect_peaks(self.y_array)
+        # Ignore peaks near the edges, where the filter is not reliable
+        reliable = good_samples(self.y_array)
+        self.peak_indices = self.peak_indices[reliable[self.peak_indices]]
         print("detected peaks:", len(self.peak_indices))
         print("peak indices:", self.peak_indices)
         print("peak cordinates:",
