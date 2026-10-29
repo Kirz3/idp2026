@@ -81,6 +81,7 @@ class SignalAppWidget(QWidget):
 
     def set_signal_path(self, signal_path: Path):
         self.signal_path = signal_path
+        print("SET_SIGNAL_PATH CALLED", flush=True)
         if self.signal_path and self.signal_path.suffix == ".npy":
             self.previous_window_button.setEnabled(True)
             self.next_window_button.setEnabled(True)
@@ -124,6 +125,7 @@ class SignalAppWidget(QWidget):
 
     @Slot()
     def current_window_signal_analyzer(self):
+        print("CURRENT WINDOW STARTED", flush=True)
         worker = Worker(
             self.signal_analyzer.current_window,
             signal_path=self.signal_path,
@@ -138,6 +140,7 @@ class SignalAppWidget(QWidget):
 
     @Slot()
     def previous_window_signal_analyzer(self):
+        print("Previous pressed")
         worker = Worker(
             self.signal_analyzer.previous_window,
             signal_path=self.signal_path,
@@ -150,6 +153,7 @@ class SignalAppWidget(QWidget):
 
     @Slot()
     def next_window_signal_analyzer(self):
+        print("Next pressed")
         worker = Worker(
             self.signal_analyzer.next_window,
             signal_path=self.signal_path,

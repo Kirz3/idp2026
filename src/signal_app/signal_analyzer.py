@@ -49,7 +49,10 @@ class SignalAnalyzer:
         self.peak_detector = JuliasPeakDetector(noise_multiplier=6.0)
         # Tallennetaan tunnistettujen piikkien indeksit.
         self.peak_indices = np.array([], dtype=int)
-
+        # Variables used for navigating through the signal file
+        #self.window_start = 0
+        #self.window_size = 30_000_000
+        #self.signal_length = 0
 
 
     def _read_signal(self, chunk_size: int = 1) -> Iterator[np.ndarray]:
@@ -403,6 +406,8 @@ class SignalAnalyzer:
         self.load_window(
             self.x,
             self.x + self.window_size,
+            #self.window_start,
+            #self.window_start + self.window_size,
             signal_path,
             set_chart_axis_y,
             update_chart,
@@ -421,9 +426,12 @@ class SignalAnalyzer:
         update_markers: Signal | None = None,
     ):
         self.x = self.x - self.window_size if self.x > self.window_size else 0
+        #self.window_start = max(0, self.window_start - self.window_size)
         self.load_window(
             self.x,
             self.x + self.window_size,
+            #self.window_start,
+            #self.window_start + self.window_size,
             signal_path,
             set_chart_axis_y,
             update_chart,
@@ -442,11 +450,15 @@ class SignalAnalyzer:
         self.x = (
             self.x + self.window_size
             if self.max_x > self.x + self.window_size
-            else self.x
-        )
+            else self.x)
+        #if self.has_next_window():
+        #    self.window_start += self.window_size
+
         self.load_window(
             self.x,
             self.x + self.window_size,
+            #self.window_start,
+            #self.window_start + self.window_size,
             signal_path,
             set_chart_axis_y,
             update_chart,
@@ -456,6 +468,8 @@ class SignalAnalyzer:
 
     def has_previous_window(self):
         return self.x > 0
+        #return self.window_start > 0
 
     def has_next_window(self):
         return self.x < self.max_x - self.window_size
+        #return self.window_start + self.window_size < self.signal_length

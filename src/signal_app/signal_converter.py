@@ -46,17 +46,25 @@ class SignalConverter:
 
         # This is terrible: read each row from the file to count the number of rows
         row_count = 0
-        with source_signal_path.open() as source_signal_file:
+
+        with source_signal_path.open("r", newline="") as source_signal_file:
             reader = csv.reader(source_signal_file)
-            next(reader)
-            for row in csv.reader(source_signal_file):
+            next(reader, None)
+
+            for row in reader:
                 if not row:
                     continue
+
                 row_count += 1
 
-                # Was the process cancelled during our reading?
                 if self.cancelled:
                     return False
+
+                 # Handle an empty CSV file.
+        if row_count == 0:
+            if progress_callback:
+                progress_callback.emit(100)
+            return True
 
         # Open a memory mapped binary file for writing. Set data type to 16-bit integers. Save both adc1 and adc2
         # in their own columns as in the original file. Order refers to C and Fortran conventions of multidimensional
@@ -75,32 +83,64 @@ class SignalConverter:
         # Read the CSV-file row-by-row writing it into the binary data file. This approach is slow, but it allows full
         # control of the reading process - every 50000 points or 1 second of data, the progress bar is updated.
         # Using some other reader that allows larger chunks could be more efficient than this.
-        with source_signal_path.open() as source_signal_file:
-            reader = csv.reader(source_signal_file)
-            next(reader)
-            for index, row in enumerate(reader):
-                if not row:
-                    continue
-                data[index, :] = row
-                if index % (50000 * 60) == 0:
-                    # Force the data array to write changes to disk. This presumably happens automatically too at
-                    # implementation-defined points, but this the API provided to the numpy users.
-                    data.flush()
-                if progress_callback and index % 50000 == 0:
-                    progress_callback.emit((index / row_count) * 100)
+        try:
+            # Read the CSV file and write its data to the binary file.
+            data_index = 0
 
-                if self.cancelled:
-                    del data
-                    target_signal_path.unlink()  # Remove the binary data file
-                    return False
+            with source_signal_path.open(
+                "r", newline=""
+            ) as source_signal_file:
+                reader = csv.reader(source_signal_file)
+                next(reader, None)
 
-        data.flush()  # again, once more force the array to write changes to disk
-        if not self.cancelled and progress_callback:
-            # Finish the progress bar.
-            progress_callback.emit(100)
-        if self.cancelled and progress_callback:
+                for row in reader:
+                    if not row:
+                        continue
+
+                    if self.cancelled:
+                        return False
+
+                    if data_index >= row_count:
+                        raise ValueError(
+                            "The CSV file changed during conversion."
+                        )
+
+                    # Write adc1 and adc2 values.
+                    data[data_index, :] = np.asarray(row, dtype=np.int16)
+                    data_index += 1
+
+                    # Flush data periodically.
+                    if data_index % (50000 * 60) == 0:
+                        data.flush()
+
+                    # Update conversion progress.
+                    if progress_callback and data_index % 50000 == 0:
+                        progress_callback.emit(
+                            min((data_index / row_count) * 100, 100)
+                        )
+
+            if data_index != row_count:
+                raise ValueError(
+                    "The number of CSV rows changed during conversion."
+                )
+
+            data.flush()
+
+            if self.cancelled:
+                return False
+
+            if progress_callback:
+                progress_callback.emit(100)
+
+            return True
+
+        finally:
+            # Release the memory-mapped file.
             del data
-            target_signal_path.unlink()
-            progress_callback.emit(0)
 
-        return not self.cancelled
+            # Remove incomplete output if conversion was cancelled.
+    
+            if self.cancelled:
+                target_signal_path.unlink(missing_ok=True)
+    # Test Comment
+    

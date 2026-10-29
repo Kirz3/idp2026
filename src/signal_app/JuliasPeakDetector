@@ -1,0 +1,110 @@
+import numpy as np
+
+
+class SignalPeakDetector:
+
+    def __init__(self, noise_multiplier: float = 6.0):
+        # Peak detection sensitivity.
+        self.noise_multiplier = noise_multiplier
+
+    def detect_peaks(self, signal: np.ndarray) -> np.ndarray:
+        # Convert input to NumPy array.
+        signal = np.asarray(signal, dtype=float)
+
+
+        # tarkistetaan signaalin pituus
+        if len(signal) < 3:
+            return np.array([], dtype=int)
+
+        # Estimate noise level from sample differences.
+        differences = np.diff(signal)
+        median_difference = np.median(differences)
+        deviations = np.abs(differences - median_difference)
+
+        #kohinataso
+        noise_level = np.median(deviations) / (
+            0.6745 * np.sqrt(2)
+        )
+
+        # Require a clear peak above the noise.
+        threshold = max(
+            self.noise_multiplier * noise_level,
+            20.0
+        )
+
+        # Find upward-pointing local maxima.
+        #huippujen haku
+        is_local_maximum = (
+            (signal[1:-1] > signal[:-2]) &
+            (signal[1:-1] > signal[2:])
+        )
+
+        candidates = np.flatnonzero(is_local_maximum) + 1
+
+        if len(candidates) == 0:
+            return np.array([], dtype=int)
+
+        # Compare each candidate with its surroundings.
+        # 500 samples = 0.01 seconds at 50 kHz.
+        window = 500
+
+        # vertailukohtieb haku molemmilta puolilta
+        left_indices = np.maximum(candidates - window, 0)
+        right_indices = np.minimum(
+            candidates + window,
+            len(signal) - 1
+        )
+
+        # Average nearby samples to reduce noise effects.
+        offsets = np.array([-20, -10, 0, 10, 20])
+
+        left_positions = np.clip(
+            left_indices[:, None] + offsets,
+            0,
+            len(signal) - 1
+        )
+
+        right_positions = np.clip(
+            right_indices[:, None] + offsets,
+            0,
+            len(signal) - 1
+        )
+
+        left_level = np.mean(signal[left_positions], axis=1)
+        right_level = np.mean(signal[right_positions], axis=1)
+
+        # A peak must rise above the surrounding signal.
+        surrounding_level = np.maximum(
+            left_level,
+            right_level
+        )
+
+        peak_height = signal[candidates] - surrounding_level
+
+        # Keep sufficiently strong peaks.
+        peaks = candidates[peak_height > threshold]
+
+        if len(peaks) == 0:
+            return np.array([], dtype=int)
+
+        # Minimum distance: 0.2 seconds at 50 kHz.
+        min_distance = 10_000
+
+        # Prefer the highest peak when peaks are close together.
+        strongest_first = np.argsort(signal[peaks])[::-1]
+
+        selected = []
+
+#liian lähekkäisten piikkien poisto
+        for index in strongest_first:
+            peak = peaks[index]
+
+            if all(
+                abs(peak - previous) >= min_distance
+                for previous in selected
+            ):
+                selected.append(peak)
+
+# Järjestetään valitut piikit aikajärjestykseen
+        # ja palautetaan niiden indeksit kokonaislukuina.
+        return np.array(sorted(selected), dtype=int)
