@@ -6,7 +6,7 @@ import logging
 import time
 from collections.abc import Iterator
 from pathlib import Path
-from signal_app.SignalPeakDetector import SignalPeakDetector
+from signal_app.JuliasPeakDetector import JuliasPeakDetector
 from signal_app.signal_preprocessing import preprocess
 
 import numpy as np
@@ -46,7 +46,7 @@ class SignalAnalyzer:
         # Alustetaan y-akselin pienin arvo mahdollisimman suureksi.
         self.y_min = np.inf
         # Alustetaan signaalipiikkien tunnistin.
-        self.peak_detector = SignalPeakDetector(noise_multiplier=6.0)
+        self.peak_detector = JuliasPeakDetector(noise_multiplier=6.0)
         # Tallennetaan tunnistettujen piikkien indeksit.
         self.peak_indices = np.array([], dtype=int)
 
@@ -219,8 +219,12 @@ class SignalAnalyzer:
                 valid_indices = np.flatnonzero(np.isfinite(self.y_array))
                 valid_signal = self.y_array[valid_indices]
 
-                # Tunnistetaan piikit Jennin algoritmilla.
-                detected_indices = self.peak_detector.detect_peaks(valid_signal)
+                
+               # Esikäsitellään signaali Vamshin menetelmällä.
+                processed_signal = preprocess(valid_signal, smooth_ms=0)
+
+                # Tunnistetaan piikit Julian SciPy-algoritmilla.
+                detected_indices = self.peak_detector.detect_peaks(processed_signal)
 
                 print("Signaalin suurin arvo:", np.max(valid_signal))
                 print("Tunnistettuja piikkejä:", len(detected_indices))
@@ -330,7 +334,8 @@ class SignalAnalyzer:
         # Print the indices and coordinates of detected peaks
         # to help verify the detection results.
 
-        self.peak_indices = self.peak_detector.detect_peaks(self.y_array)
+        processed_signal = preprocess(self.y_array, smooth_ms=0)
+        self.peak_indices = self.peak_detector.detect_peaks(processed_signal)
         print("detected peaks:", len(self.peak_indices))
         print("peak indices:", self.peak_indices)
         print("peak cordinates:",
