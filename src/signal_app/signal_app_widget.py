@@ -55,7 +55,9 @@ class SignalAppWidget(QWidget):
 
         # Add buttons to start and stop the signal analyzer.
         self.start_button = QPushButton("Start")
+        self.start_button.setStyleSheet("background-color: green; color: white;")
         self.stop_button = QPushButton("Stop")
+        self.stop_button.setStyleSheet("background-color: red; color: white;")
         self.previous_window_button = QPushButton("Previous window")
         self.next_window_button = QPushButton("Next window")
 

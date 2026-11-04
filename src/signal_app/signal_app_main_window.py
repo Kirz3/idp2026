@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QThreadPool
-from PySide6.QtGui import QCloseEvent
+from PySide6.QtGui import QCloseEvent, QPalette
 from PySide6.QtWidgets import QApplication, QFileDialog, QMainWindow, QProgressDialog
 
 from signal_app.signal_app_widget import SignalAppWidget
@@ -48,6 +48,12 @@ class SignalAppMainWindow(QMainWindow):
         self.signal_app_widget = SignalAppWidget()
         self.setCentralWidget(self.signal_app_widget)
         self.setWindowTitle("Signal App")
+
+        pal = QPalette()
+        pal.setColor(QPalette.ColorRole.Window, Qt.GlobalColor.black)
+        self.setPalette(pal)
+        self.setAutoFillBackground(True)
+
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.signal_app_widget.stop_signal_analyser()
