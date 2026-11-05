@@ -8,6 +8,7 @@ from collections.abc import Iterator
 from pathlib import Path
 from signal_app.JuliasPeakDetector import JuliasPeakDetector
 from signal_app.signal_preprocessing import preprocess
+from signal_app.TumorMeasurement import TumorMeasurement
 
 import numpy as np
 from PySide6.QtCore import Signal
@@ -53,6 +54,8 @@ class SignalAnalyzer:
         #self.window_start = 0
         #self.window_size = 30_000_000
         #self.signal_length = 0
+        # Alustetaan kasvaimen koon mittaaja.
+        self.tumor_measurement = TumorMeasurement()
 
 
     def _read_signal(self, chunk_size: int = 1) -> Iterator[np.ndarray]:
@@ -90,9 +93,13 @@ class SignalAnalyzer:
                     if i % chunk_size != 0:
                         yield data[: i % chunk_size]
             case ".npy":
+                # Count how much time it takes to open the file
+                start_time = time.perf_counter()
                 # Open once to get array length.
                 # The array in the file is a flat, single-dimensional array of n elements.
                 signal = np.memmap(self.signal_path, dtype=np.int16, order="C")
+                end_time = time.perf_counter()
+                print(f"Opening the file took: {end_time - start_time:.4f}s")
                 # Reopen the file with correct (n // 2, 2) shape.
                 signal = np.memmap(
                     self.signal_path,
@@ -175,6 +182,7 @@ class SignalAnalyzer:
         update_chart: Signal | None = None,
         progress_callback: Signal | None = None,
         update_markers: Signal | None = None,
+        update_tumor_size: Signal | None = None,
     ):
         """
         Starts the SignalAnalyzer main loop.
@@ -235,6 +243,16 @@ class SignalAnalyzer:
                 # Muutetaan indeksit takaisin alkuperäisen signaalin indekseiksi.
                 self.peak_indices = valid_indices[detected_indices]
                 print("Piikkien indeksit:", self.peak_indices)
+                # Lasketaan kasvaimen koko havaittujen piikkien perusteella.
+                tumor_size = self.tumor_measurement.calculate_tumor_size(
+                    self.peak_indices
+                )
+
+                # Lähetetään mittaustulos käyttöliittymään.
+                if update_tumor_size:
+                    update_tumor_size.emit(tumor_size)
+
+
                 print("Piikkien arvot:", self.y_array[self.peak_indices])
                 print("Piikkien ajat:", self.x_array[self.peak_indices])
 
@@ -314,6 +332,7 @@ class SignalAnalyzer:
         update_chart: Signal | None = None,
         progress_callback: Signal | None = None,
         update_markers: Signal | None = None,
+        update_tumor_size: Signal | None = None,
     ):
         """Loads a signal window.
         :param start_x: the start of the window
@@ -339,6 +358,17 @@ class SignalAnalyzer:
 
         processed_signal = preprocess(self.y_array, smooth_ms=0)
         self.peak_indices = self.peak_detector.detect_peaks(processed_signal)
+        # Lasketaan kasvaimen koko havaittujen piikkien perusteella.
+        tumor_size = self.tumor_measurement.calculate_tumor_size(
+        self.peak_indices
+        )
+
+        print("Tumor size estimate:", tumor_size, "peaks")
+
+        if update_tumor_size:
+            update_tumor_size.emit(tumor_size)
+
+
         print("detected peaks:", len(self.peak_indices))
         print("peak indices:", self.peak_indices)
         print("peak cordinates:",
@@ -402,6 +432,9 @@ class SignalAnalyzer:
         update_chart: Signal | None = None,
         progress_callback: Signal | None = None,
         update_markers: Signal | None = None,
+        update_tumor_size: Signal | None = None,
+
+        
     ):
         self.load_window(
             self.x,
@@ -413,6 +446,7 @@ class SignalAnalyzer:
             update_chart,
             progress_callback,
             update_markers,
+            update_tumor_size = update_tumor_size,
         )
 
         # ikkunoiden käsittely
@@ -424,6 +458,7 @@ class SignalAnalyzer:
         update_chart: Signal | None = None,
         progress_callback: Signal | None = None,
         update_markers: Signal | None = None,
+        update_tumor_size: Signal | None = None,
     ):
         self.x = self.x - self.window_size if self.x > self.window_size else 0
         #self.window_start = max(0, self.window_start - self.window_size)
@@ -437,6 +472,7 @@ class SignalAnalyzer:
             update_chart,
             progress_callback,
             update_markers,
+            update_tumor_size = update_tumor_size,
         )
 
     def next_window(
@@ -446,6 +482,7 @@ class SignalAnalyzer:
         update_chart: Signal | None = None,
         progress_callback: Signal | None = None,
         update_markers: Signal | None = None,
+        update_tumor_size: Signal | None = None,
     ):
         self.x = (
             self.x + self.window_size
@@ -464,6 +501,7 @@ class SignalAnalyzer:
             update_chart,
             progress_callback,
             update_markers,
+            update_tumor_size = update_tumor_size,
         )
 
     def has_previous_window(self):
