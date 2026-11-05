@@ -224,7 +224,10 @@ class SignalAnalyzer:
 
                 
                # Esikäsitellään signaali Vamshin menetelmällä.
-                processed_signal = preprocess(valid_signal, smooth_ms=0)
+                processed_signal = preprocess(valid_signal, smooth_ms=0, method="linear")
+                # Chart shows the processed signal (NaN where data is missing)
+                display_signal = np.full(len(self.y_array), np.nan)
+                display_signal[valid_indices] = processed_signal
 
                 # Tunnistetaan piikit Julian SciPy-algoritmilla.
                 detected_indices = self.peak_detector.detect_peaks(processed_signal)
@@ -242,12 +245,12 @@ class SignalAnalyzer:
                 # Update y-axis min/max if need be:
                 self.y_min = (
                     y_min
-                    if (y_min := np.nanmin(self.y_array)) < self.y_min
+                    if (y_min := np.nanmin(display_signal)) < self.y_min
                     else self.y_min
                 )
                 self.y_max = (
                     y_max
-                    if (y_max := np.nanmax(self.y_array)) > self.y_max
+                    if (y_max := np.nanmax(display_signal)) > self.y_max
                     else self.y_max
                 )
 
@@ -269,7 +272,7 @@ class SignalAnalyzer:
                 )
 
                 vis_x = self.x_array[vis_indices].copy()
-                vis_y = self.y_array[vis_indices].copy()
+                vis_y = display_signal[vis_indices].copy()
 
 
                 logger.debug(
@@ -288,7 +291,7 @@ class SignalAnalyzer:
             # Send the detected peak coordinates to the chart markers.
                 if update_markers:
                     peak_x = self.x_array[self.peak_indices]
-                    peak_y = self.y_array[self.peak_indices]
+                    peak_y = display_signal[self.peak_indices]
                     update_markers.emit(peak_x, peak_y)
 
                 if progress_callback:
@@ -337,7 +340,8 @@ class SignalAnalyzer:
         # Print the indices and coordinates of detected peaks
         # to help verify the detection results.
 
-        processed_signal = preprocess(self.y_array, smooth_ms=0)
+        processed_signal = preprocess(self.y_array, smooth_ms=0, method="linear")
+        display_signal = processed_signal
         self.peak_indices = self.peak_detector.detect_peaks(processed_signal)
         print("detected peaks:", len(self.peak_indices))
         print("peak indices:", self.peak_indices)
@@ -361,10 +365,10 @@ class SignalAnalyzer:
 
         # Update y-axis min/max if need be:
         self.y_min = (
-            y_min if (y_min := np.nanmin(self.y_array)) < self.y_min else self.y_min
+            y_min if (y_min := np.nanmin(display_signal)) < self.y_min else self.y_min
         )
         self.y_max = (
-            y_max if (y_max := np.nanmax(self.y_array)) > self.y_max else self.y_max
+            y_max if (y_max := np.nanmax(display_signal)) > self.y_max else self.y_max
         )
 
         vis_indices = np.unique(
@@ -375,7 +379,7 @@ class SignalAnalyzer:
 )
 
         vis_x = self.x_array[vis_indices].copy()
-        vis_y = self.y_array[vis_indices].copy()
+        vis_y = display_signal[vis_indices].copy()
 
         if set_chart_axis_y:
             set_chart_axis_y.emit(self.y_min, self.y_max)
@@ -386,7 +390,7 @@ class SignalAnalyzer:
                 
         if update_markers:
             peak_x = self.x_array[self.peak_indices]
-            peak_y = self.y_array[self.peak_indices]
+            peak_y = display_signal[self.peak_indices]
             update_markers.emit(peak_x, peak_y)  
            
 
