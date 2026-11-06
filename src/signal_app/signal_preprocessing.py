@@ -6,6 +6,7 @@ SAMPLE_RATE = 50_000  # measurements per second
 SMOOTH_MS = 1.0       # smoothing window in milliseconds
 HIGHPASS_HZ = 0.3     # drift slower than this is removed
 EDGE_SECONDS = 2.0    # filter is unreliable this long at the start and end
+BLOCK_SECONDS = 1.0   # linear baseline: one anchor point per block
 
 
 def smooth(y, fs=SAMPLE_RATE, ms=SMOOTH_MS):
@@ -24,7 +25,34 @@ def remove_baseline(y, fs=SAMPLE_RATE, cutoff_hz=HIGHPASS_HZ):
     return sosfiltfilt(sos, y, padlen=pad)
 
 
-def preprocess(y, fs=SAMPLE_RATE, smooth_ms=SMOOTH_MS, cutoff_hz=HIGHPASS_HZ):
+def block_medians(y, fs=SAMPLE_RATE, block_seconds=BLOCK_SECONDS):
+    # Median of every block. The median ignores short spikes.
+    size = max(1, int(block_seconds * fs))
+    starts = np.arange(0, len(y), size)
+    medians = np.array([np.median(y[a:a + size]) for a in starts])
+    centers = np.array([min(a + size, len(y)) / 2 + a / 2 for a in starts])
+    return centers, medians
+
+
+def remove_baseline_linear(y, fs=SAMPLE_RATE, block_seconds=BLOCK_SECONDS):
+    # Draw straight lines between the block medians and subtract them.
+    centers, medians = block_medians(y, fs, block_seconds)
+    baseline = np.interp(np.arange(len(y)), centers, medians)
+    return y - baseline
+
+
+def baseline_drift(y, fs=SAMPLE_RATE, block_seconds=BLOCK_SECONDS):
+    # How far the baseline moves: highest minus lowest block median.
+    y = np.asarray(y, dtype=np.float64)
+    y = y[~np.isnan(y)]
+    if len(y) == 0:
+        return 0.0
+    _, medians = block_medians(y, fs, block_seconds)
+    return float(medians.max() - medians.min())
+
+
+def preprocess(y, fs=SAMPLE_RATE, smooth_ms=SMOOTH_MS, cutoff_hz=HIGHPASS_HZ,
+               method="highpass"):
     y = np.asarray(y, dtype=np.float64)
     result = np.full(y.shape, np.nan)
 
@@ -38,7 +66,10 @@ def preprocess(y, fs=SAMPLE_RATE, smooth_ms=SMOOTH_MS, cutoff_hz=HIGHPASS_HZ):
     stops = np.flatnonzero(change == -1)
     for start, stop in zip(starts, stops):
         part = smooth(y[start:stop], fs, smooth_ms)
-        result[start:stop] = remove_baseline(part, fs, cutoff_hz)
+        if method == "linear":
+            result[start:stop] = remove_baseline_linear(part, fs)
+        else:
+            result[start:stop] = remove_baseline(part, fs, cutoff_hz)
     return result
 
 
