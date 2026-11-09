@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: MIT
 import csv
 import logging
+import signal
+from signal import signal
 import time
 from collections.abc import Iterator
 from pathlib import Path
@@ -30,7 +32,7 @@ class SignalAnalyzer:
         # Muutetaan tila sellaiseksi, että käsittelysilmukka lopettaa.
         self.running = False
         # Näytettävän signaali-ikkunan koko näytteiden lukumääränä.
-        self.window_size = 600 * 50000  # Let's take 10 minutes of the signal
+        self.window_size = 300 * 50000  # Let's take 5 minutes of the signal
         # Signaali luetaan tiedostosta tämän kokoisina paloina.
         self.chunk_size = 500000  # ten second at a time
         # Nykyisen signaali-ikkunan aloituskohta.
@@ -50,8 +52,7 @@ class SignalAnalyzer:
         # Tallennetaan tunnistettujen piikkien indeksit.
         self.peak_indices = np.array([], dtype=int)
         # Variables used for navigating through the signal file
-        #self.window_start = 0
-        #self.window_size = 30_000_000
+        self.window_start = 0
         #self.signal_length = 0
 
 
@@ -134,6 +135,9 @@ class SignalAnalyzer:
 
                 # Update maximum x value
                 self.max_x = signal.shape[0]
+
+                print("READING SIGNAL:", self.signal_path, flush=True)
+                print("MAX_X SET TO:", self.max_x, flush=True)
 
                 if end_x < self.max_x:
                     # Return a slice from the signal array.
@@ -232,6 +236,12 @@ class SignalAnalyzer:
                 print("Signaalin suurin arvo:", np.max(valid_signal))
                 print("Tunnistettuja piikkejä:", len(detected_indices))
 
+                print("Processed signal shape:", processed_signal.shape)
+                print("NaN count:", np.isnan(processed_signal).sum())
+                print("Inf count:", np.isinf(processed_signal).sum())
+                print("Finite values:", np.isfinite(processed_signal).sum())
+                print("Min:", np.nanmin(processed_signal))
+                print("Max:", np.nanmax(processed_signal))  
                 # Muutetaan indeksit takaisin alkuperäisen signaalin indekseiksi.
                 self.peak_indices = valid_indices[detected_indices]
                 print("Piikkien indeksit:", self.peak_indices)
@@ -327,8 +337,18 @@ class SignalAnalyzer:
             set_chart_axis_y.emit(self.y_min, self.y_max)
 
         self.x_array, self.y_array = self._read_signal_at(start_x, end_x)
+
+        print("WINDOW START:", start_x, flush=True)
+        print("WINDOW END:", end_x, flush=True)
+        print("Y ARRAY TYPE:", type(self.y_array), flush=True)
+        print("Y ARRAY DTYPE:", self.y_array.dtype, flush=True)
+        print("Y ARRAY SHAPE:", self.y_array.shape, flush=True) 
+        
         self.x_array = self.x_array / 50000
         self.y_array = self.y_array[:, 1]
+
+        print("SELECTED CHANNEL SHAPE:", self.y_array.shape, flush=True)
+        print("SELECTED CHANNEL FINITE:", np.isfinite(self.y_array).all(), flush=True)
 
         # DETECTION ALGORITHM(s)
         # Tunnistetaan signaalipiikit nykyisestä signaali-ikkunasta.
@@ -403,11 +423,16 @@ class SignalAnalyzer:
         progress_callback: Signal | None = None,
         update_markers: Signal | None = None,
     ):
+        start_x = self.window_start
+        end_x = min(start_x + self.window_size, self.max_x)
+
         self.load_window(
-            self.x,
-            self.x + self.window_size,
+            #self.x,
+            #self.x + self.window_size,
             #self.window_start,
             #self.window_start + self.window_size,
+            start_x,
+            end_x,
             signal_path,
             set_chart_axis_y,
             update_chart,
@@ -425,13 +450,13 @@ class SignalAnalyzer:
         progress_callback: Signal | None = None,
         update_markers: Signal | None = None,
     ):
-        self.x = self.x - self.window_size if self.x > self.window_size else 0
-        #self.window_start = max(0, self.window_start - self.window_size)
+        #self.x = self.x - self.window_size if self.x > self.window_size else 0
+        self.window_start = max(0, self.window_start - self.window_size)
         self.load_window(
-            self.x,
-            self.x + self.window_size,
-            #self.window_start,
-            #self.window_start + self.window_size,
+            #self.x,
+            #self.x + self.window_size,
+            self.window_start,
+            self.window_start + self.window_size,
             signal_path,
             set_chart_axis_y,
             update_chart,
@@ -451,14 +476,14 @@ class SignalAnalyzer:
             self.x + self.window_size
             if self.max_x > self.x + self.window_size
             else self.x)
-        #if self.has_next_window():
-        #    self.window_start += self.window_size
+        if self.has_next_window():
+            self.window_start += self.window_size
 
         self.load_window(
-            self.x,
-            self.x + self.window_size,
-            #self.window_start,
-            #self.window_start + self.window_size,
+            #self.x,
+            #self.x + self.window_size,
+            self.window_start,
+            self.window_start + self.window_size,
             signal_path,
             set_chart_axis_y,
             update_chart,
@@ -467,9 +492,14 @@ class SignalAnalyzer:
         )
 
     def has_previous_window(self):
-        return self.x > 0
+        #return self.x > 0
         #return self.window_start > 0
+        self.window_start = max(0, self.window_start - self.window_size)
+        self.current_window()
 
     def has_next_window(self):
-        return self.x < self.max_x - self.window_size
-        #return self.window_start + self.window_size < self.signal_length
+        #return self.x < self.max_x - self.window_size
+        #return self.window_start + self.window_size < self.max_x
+        if self.window_start + self.window_size < self.max_x:
+            self.window_start += self.window_size
+            self.current_window()

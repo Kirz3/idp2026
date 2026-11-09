@@ -168,7 +168,22 @@ class SignalAppWidget(QWidget):
 
     @Slot()
     def _updated_window_signal_analyzer(self):
-        self.previous_window_button.setEnabled(
-            self.signal_analyzer.has_previous_window()
+        print("WINDOW UPDATE FINISHED", flush=True)
+
+        print("window_start:", self.signal_analyzer.window_start, flush=True)
+        print("max_x:", self.signal_analyzer.max_x, flush=True)
+        print("window_size:", self.signal_analyzer.window_size, flush=True)
+
+        print(
+            "has_previous:",
+            self.signal_analyzer.has_previous_window(),
+            flush=True
         )
+
+        print(
+            "has_next:",
+            self.signal_analyzer.has_next_window(),
+            flush=True
+        )
+        self.previous_window_button.setEnabled(self.signal_analyzer.has_previous_window())
         self.next_window_button.setEnabled(self.signal_analyzer.has_next_window())
