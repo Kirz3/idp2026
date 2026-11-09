@@ -26,6 +26,8 @@ class SignalAppWidget(QWidget):
     chart_update_data = Signal(np.ndarray, np.ndarray)
     # Signal for passing detected peak coordinates to the chart.
     chart_update_markers = Signal(np.ndarray, np.ndarray)
+    # Signal for updating tumor measurement in the UI.
+    chart_update_tumor_size = Signal(int)   
     ## Välittää tunnistettujen signaalipiikkien x- ja y-koordinaatit kuvaajalle.
 
 
@@ -46,11 +48,18 @@ class SignalAppWidget(QWidget):
             #self.signal_window_chart.replace_array, type=Qt.BlockingQueuedConnection
             self.signal_window_chart.update_plot, type=Qt.BlockingQueuedConnection
         )
-        # Connect the detected peak signal to the chart's marker update method.
+       # Connect the detected peak signal to the chart's marker update method.
         self.chart_update_markers.connect(
-        self.signal_window_chart.update_markers,
-        type=Qt.BlockingQueuedConnection
+            self.signal_window_chart.update_markers,
+            type=Qt.BlockingQueuedConnection
         )
+
+        # Connect tumor measurement updates to the chart widget.
+        self.chart_update_tumor_size.connect(
+            self.signal_window_chart.update_tumor_size,
+            type=Qt.BlockingQueuedConnection
+        )
+
         #Yhdistetään marker-signaali kuvaajan merkkien päivitysmetodiin.
 
         # Add buttons to start and stop the signal analyzer.
@@ -108,6 +117,7 @@ class SignalAppWidget(QWidget):
             set_chart_axis_y=self.chart_set_axis_y,
             update_chart=self.chart_update_data,
             update_markers=self.chart_update_markers,
+            update_tumor_size=self.chart_update_tumor_size,
         )
 
         # Worker-class defines a "signals"-field that is a WorkerSignal-instance.
@@ -136,6 +146,7 @@ class SignalAppWidget(QWidget):
         # Pass the marker update signal to SignalAnalyzer
         # so detected peaks can be displayed on the chart.
             update_markers=self.chart_update_markers,
+            update_tumor_size=self.chart_update_tumor_size,
         )
         worker.signals.finished.connect(self._updated_window_signal_analyzer)
         self.threadpool.start(worker)
@@ -149,6 +160,7 @@ class SignalAppWidget(QWidget):
             set_chart_axis_y=self.chart_set_axis_y,
             update_chart=self.chart_update_data,
             update_markers=self.chart_update_markers,
+            update_tumor_size=self.chart_update_tumor_size,
         )
         worker.signals.finished.connect(self._updated_window_signal_analyzer)
         self.threadpool.start(worker)
@@ -162,6 +174,7 @@ class SignalAppWidget(QWidget):
             set_chart_axis_y=self.chart_set_axis_y,
             update_chart=self.chart_update_data,
             update_markers=self.chart_update_markers,
+            update_tumor_size=self.chart_update_tumor_size,
         )
         worker.signals.finished.connect(self._updated_window_signal_analyzer)
         self.threadpool.start(worker)

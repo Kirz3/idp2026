@@ -17,7 +17,7 @@ from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as Navigation
 from matplotlib.figure import Figure
 #from PySide6.QtCharts import QChart, QChartView, QLineSeries, QValueAxis
 from PySide6.QtCore import Qt, Slot
-from PySide6.QtWidgets import QVBoxLayout, QWidget
+from PySide6.QtWidgets import QVBoxLayout, QWidget, QLabel
 from signal_app.detection_markers import DetectionMarkers
 
 logger = logging.getLogger(__name__)
@@ -50,6 +50,16 @@ class SignalWindowChartWidget(QWidget):
 
         layout.addWidget(self.dynamic_canvas)
         layout.addWidget(NavigationToolbar(self.dynamic_canvas, self))
+        # Näytetään kasvaimen mittaustulos käyttöliittymässä.
+        self.tumor_size_label = QLabel("Tumor measurement: Waiting for data", self)
+        self.tumor_size_label.setStyleSheet("""
+            QLabel {
+                font-size: 12pt;
+             }
+        """)
+        self.tumor_size_label.setFont(self.font())
+        self.tumor_size_label.adjustSize()
+        self.tumor_size_label.raise_()
 
 
         """
@@ -121,8 +131,14 @@ class SignalWindowChartWidget(QWidget):
         self._dynamic_ax.set_title(f"Signal – Detected peaks: {len(x)}")
         self.dynamic_canvas.draw_idle()
         
+    @Slot(int)
+    def update_tumor_size(self, tumor_size: int):
+        print("UI received tumor size:", tumor_size, flush=True)
 
-
+        self.tumor_size_label.setText(
+            f"Tumor measurement: {tumor_size} detected peaks"
+    )
+        self.tumor_size_label.adjustSize()
 
     @Slot(float, float)
     def set_axis_y(self, min_y: float, max_y: float):
@@ -132,6 +148,16 @@ class SignalWindowChartWidget(QWidget):
         #self.axis_y.setMax(max_y)
         self._dynamic_ax.set_ylim(min_y, max_y)
         self.dynamic_canvas.draw_idle()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+
+        # Sijoitetaan mittaustulos vasempaan alakulmaan.
+        self.tumor_size_label.adjustSize()
+        self.tumor_size_label.move(
+            375,
+            self.height() - self.tumor_size_label.height() - 30
+    )    
 
 """
     def add_series(self, name: str):

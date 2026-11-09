@@ -10,6 +10,7 @@
 
 import logging
 import sys
+import time
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QThreadPool
@@ -68,11 +69,22 @@ class SignalAppMainWindow(QMainWindow):
             self.tr("Signal files (*.csv *.npy)"),
             self.selected_open_filter,
         )
+
+        if not signal_path:
+                    return
+        
         signal_path = Path(signal_path)  # but I like pathlib.Path
         self.last_dir = signal_path.parent
         self.signal_path = signal_path
+
+        start_time = time.perf_counter()
+
         self.signal_app_widget.set_signal_path(signal_path)
+
+        elapsed_time = time.perf_counter() - start_time
+
         logger.debug("Opened file '%s'", signal_path)
+        logger.info("File opening setup took %.3f seconds", elapsed_time)
 
     def file_convert_action(self):
         # Convert requires a CSV-file.
