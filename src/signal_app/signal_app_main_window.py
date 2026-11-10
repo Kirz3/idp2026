@@ -36,6 +36,7 @@ class SignalAppMainWindow(QMainWindow):
         super().__init__()
 
         self.file_menu = self.menuBar().addMenu("&File")
+        self.file_menu.setStyleSheet("QMenuBar { background-color: black; color: white; border: 1px solid white; } QMenu { background-color: black; color: white; }")
         file_open_action = self.file_menu.addAction("Open", self.file_open_action)
         file_open_action.setShortcut("Ctrl+O")
         file_convert_action = self.file_menu.addAction(

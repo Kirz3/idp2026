@@ -227,6 +227,10 @@ class SignalAnalyzer:
                 self.y_array[-chunk_size:] = chunk[
                     :, 1
                 ]  # replace the last `chunk_size` entries with `chunk`
+                print("CHUNK SIZE:", chunk_size)
+                print("CHUNK SHAPE:", chunk.shape)
+                print("Y ARRAY SHAPE:", self.y_array.shape)
+                print("Y ARRAY SIZE:", self.y_array.size)
                 self.x += chunk_size
 
                 
