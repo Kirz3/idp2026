@@ -17,7 +17,13 @@ from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as Navigation
 from matplotlib.figure import Figure
 #from PySide6.QtCharts import QChart, QChartView, QLineSeries, QValueAxis
 from PySide6.QtCore import Qt, Slot
-from PySide6.QtWidgets import QVBoxLayout, QWidget, QLabel
+from PySide6.QtWidgets import (
+    QVBoxLayout,
+    QHBoxLayout,
+    QWidget,
+    QLabel,
+    QGroupBox,
+)
 from signal_app.detection_markers import DetectionMarkers
 
 logger = logging.getLogger(__name__)
@@ -33,33 +39,105 @@ class SignalWindowChartWidget(QWidget):
     def __init__(self):
         super().__init__()
 
+        # Main layout for the chart and measurement boxes.
         layout = QVBoxLayout(self)
+        layout.setSpacing(8)
 
+        # Create two measurement boxes above the chart.
+        measurement_layout = QHBoxLayout()
+
+         # Peak Detection box.
+        self.peak_detection_box = QGroupBox("Peak Detection")
+        self.peak_detection_box.setFixedHeight(115)
+        peak_detection_layout = QVBoxLayout(self.peak_detection_box)
+
+        self.peak_count_label = QLabel("Waiting for data")
+        self.peak_count_label.setAlignment(Qt.AlignCenter)
+        self.peak_count_label.setStyleSheet(
+            "font-size: 18pt; font-weight: bold;"
+        )
+
+        peak_detection_description = QLabel("Detected peaks")
+        peak_detection_description.setAlignment(Qt.AlignCenter)
+
+        peak_detection_layout.addWidget(self.peak_count_label)
+        peak_detection_layout.addWidget(peak_detection_description)
+
+        # Tumor Measurement box.
+        self.tumor_measurement_box = QGroupBox("Tumor Measurement")
+        self.tumor_measurement_box.setFixedHeight(115)
+        tumor_measurement_layout = QVBoxLayout(self.tumor_measurement_box)
+
+        self.tumor_size_label = QLabel("Waiting for data")
+        self.tumor_size_label.setAlignment(Qt.AlignCenter)
+        self.tumor_size_label.setStyleSheet(
+            "font-size: 18pt; font-weight: bold;"
+        )
+
+        tumor_measurement_description = QLabel(
+            "Estimated tumor size"
+        )
+        tumor_measurement_description.setAlignment(Qt.AlignCenter)
+
+        tumor_measurement_layout.addWidget(self.tumor_size_label)
+        tumor_measurement_layout.addWidget(tumor_measurement_description)
+
+        # Add both boxes side by side.
+        measurement_layout.addWidget(self.peak_detection_box)
+        measurement_layout.addWidget(self.tumor_measurement_box)
+
+        layout.addLayout(measurement_layout)
+
+        # Create the signal chart.
         self.dynamic_canvas = FigureCanvas(Figure(figsize=(10, 3)))
         self._dynamic_ax = self.dynamic_canvas.figure.subplots()
         self._dynamic_line, = self._dynamic_ax.plot([], [])
 
-        #Luodaan kuvaajaan punaiset merkit tunnistettuja signaalipiikkejä varten. 
+        # Luodaan kuvaajaan punaiset merkit tunnistettuja signaalipiikkejä varten.
         # Create markers for displaying detected signal peaks on the chart.
-        self.detection_markers= DetectionMarkers(self._dynamic_ax)
+        self.detection_markers = DetectionMarkers(self._dynamic_ax)
 
-        self._dynamic_ax.grid(visible=True, which="both", axis="both", linestyle=":", linewidth=0.5)
+        self._dynamic_ax.grid(
+            visible=True,
+            which="both",
+            axis="both",
+            linestyle=":",
+            linewidth=0.5
+        )
         self._dynamic_ax.set_xlabel("Time")
         self._dynamic_ax.set_ylabel("Amplitude")
         self._dynamic_ax.set_title("Signal")
 
         layout.addWidget(self.dynamic_canvas)
         layout.addWidget(NavigationToolbar(self.dynamic_canvas, self))
+    
+
+        #self.dynamic_canvas = FigureCanvas(Figure(figsize=(10, 3)))
+        #self._dynamic_ax = self.dynamic_canvas.figure.subplots()
+        #self._dynamic_line, = self._dynamic_ax.plot([], [])
+
+        #Luodaan kuvaajaan punaiset merkit tunnistettuja signaalipiikkejä varten. 
+        # Create markers for displaying detected signal peaks on the chart.
+        #self.detection_markers= DetectionMarkers(self._dynamic_ax)
+
+        #self._dynamic_ax.grid(visible=True, which="both", axis="both", #linestyle=":", linewidth=0.5)
+        #self._dynamic_ax.set_xlabel("Time")
+        #self._dynamic_ax.set_ylabel("Amplitude")
+        #self._dynamic_ax.set_title("Signal")
+
+        #layout.addWidget(self.dynamic_canvas)
+        #layout.addWidget(NavigationToolbar(self.dynamic_canvas, self))
         # Näytetään kasvaimen mittaustulos käyttöliittymässä.
-        self.tumor_size_label = QLabel("Tumor measurement: Waiting for data", self)
-        self.tumor_size_label.setStyleSheet("""
-            QLabel {
-                font-size: 12pt;
-             }
-        """)
-        self.tumor_size_label.setFont(self.font())
-        self.tumor_size_label.adjustSize()
-        self.tumor_size_label.raise_()
+        #self.tumor_size_label = QLabel("Tumor measurement: Waiting for #data", self)
+        #self.tumor_size_label.setStyleSheet(
+        
+            #QLabel {
+                #font-size: 12pt;
+             #}
+        #)
+        #self.tumor_size_label.setFont(self.font())
+        #self.tumor_size_label.adjustSize()
+        #self.tumor_size_label.raise_()
 
 
         """
@@ -128,17 +206,23 @@ class SignalWindowChartWidget(QWidget):
     # Update the detected peak markers and display the peak count in the chart title.
     def update_markers(self, x: np.ndarray, y: np.ndarray):
         self.detection_markers.update(x, y)
-        self._dynamic_ax.set_title(f"Signal – Detected peaks: {len(x)}")
+        # Update the Peak Detection box.
+        self.peak_count_label.setText(str(len(x)))
+        self._dynamic_ax.set_title("Signal")
+        
+        
         self.dynamic_canvas.draw_idle()
         
     @Slot(int)
     def update_tumor_size(self, tumor_size: int):
         print("UI received tumor size:", tumor_size, flush=True)
 
-        self.tumor_size_label.setText(
-            f"Tumor measurement: {tumor_size} detected peaks"
-    )
-        self.tumor_size_label.adjustSize()
+        self.tumor_size_label.setText(f"{tumor_size} peaks")
+
+        #self.tumor_size_label.setText(
+            #f"Tumor measurement: {tumor_size} detected peaks"
+    #)
+        #self.tumor_size_label.adjustSize()
 
     @Slot(float, float)
     def set_axis_y(self, min_y: float, max_y: float):
@@ -149,15 +233,15 @@ class SignalWindowChartWidget(QWidget):
         self._dynamic_ax.set_ylim(min_y, max_y)
         self.dynamic_canvas.draw_idle()
 
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
+    #def resizeEvent(self, event):
+        #super().resizeEvent(event)
 
         # Sijoitetaan mittaustulos vasempaan alakulmaan.
-        self.tumor_size_label.adjustSize()
-        self.tumor_size_label.move(
-            375,
-            self.height() - self.tumor_size_label.height() - 30
-    )    
+        #self.tumor_size_label.adjustSize()
+        #self.tumor_size_label.move(
+           # 375,
+           # self.height() - self.tumor_size_label.height() - 30
+    #)    
 
 """
     def add_series(self, name: str):
