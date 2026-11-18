@@ -535,13 +535,13 @@ class SignalAnalyzer:
 
     def has_previous_window(self):
         #return self.x > 0
-        #return self.window_start > 0
-        self.window_start = max(0, self.window_start - self.window_size)
-        self.current_window()
+        return self.window_start > 0
+        #self.window_start = max(0, self.window_start - self.window_size)
+        #self.current_window()
 
     def has_next_window(self):
         #return self.x < self.max_x - self.window_size
-        #return self.window_start + self.window_size < self.max_x
-        if self.window_start + self.window_size < self.max_x:
-            self.window_start += self.window_size
-            self.current_window()
+        return self.window_start + self.window_size < self.max_x
+        #if self.window_start + self.window_size < self.max_x:
+        #    self.window_start += self.window_size
+        #    self.current_window()
