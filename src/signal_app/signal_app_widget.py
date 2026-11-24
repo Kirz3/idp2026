@@ -27,7 +27,7 @@ class SignalAppWidget(QWidget):
     # Signal for passing detected peak coordinates to the chart.
     chart_update_markers = Signal(np.ndarray, np.ndarray)
     # Signal for updating tumor measurement in the UI.
-    chart_update_tumor_size = Signal(int)   
+    chart_update_tumor_size = Signal(object)  
     ## Välittää tunnistettujen signaalipiikkien x- ja y-koordinaatit kuvaajalle.
 
 

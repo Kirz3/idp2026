@@ -246,7 +246,11 @@ class SignalAnalyzer:
                 display_signal[valid_indices] = processed_signal
 
                 # Tunnistetaan piikit Julian SciPy-algoritmilla.
-                detected_indices = self.peak_detector.detect_peaks(processed_signal)
+                detected_indices, peak_properties = (
+                    self.peak_detector.detect_peaks_with_properties(
+                        processed_signal
+                    )
+                )
 
                 print("Signaalin suurin arvo:", np.max(valid_signal))
                 print("Tunnistettuja piikkejä:", len(detected_indices))
@@ -260,12 +264,15 @@ class SignalAnalyzer:
                 # Muutetaan indeksit takaisin alkuperäisen signaalin indekseiksi.
                 self.peak_indices = valid_indices[detected_indices]
                 print("Piikkien indeksit:", self.peak_indices)
+
                 # Lasketaan kasvaimen koko havaittujen piikkien perusteella.
                 tumor_size = self.tumor_measurement.calculate_tumor_size(
-                    self.peak_indices
+                    processed_signal,
+                    detected_indices,
+                    peak_properties
                 )
 
-                # Lähetetään mittaustulos käyttöliittymään.
+                # Send measurement results to the UI.
                 if update_tumor_size:
                     update_tumor_size.emit(tumor_size)
 
@@ -385,13 +392,19 @@ class SignalAnalyzer:
 
         processed_signal = preprocess(self.y_array, smooth_ms=0, method="linear")
         display_signal = processed_signal
-        self.peak_indices = self.peak_detector.detect_peaks(processed_signal)
+        self.peak_indices, peak_properties = (
+            self.peak_detector.detect_peaks_with_properties(
+                processed_signal
+            )
+        )
         # Lasketaan kasvaimen koko havaittujen piikkien perusteella.
         tumor_size = self.tumor_measurement.calculate_tumor_size(
-        self.peak_indices
+            processed_signal,
+            self.peak_indices,
+            peak_properties
         )
 
-        print("Tumor size estimate:", tumor_size, "peaks")
+        print("Tumor measurement:", tumor_size)
 
         if update_tumor_size:
             update_tumor_size.emit(tumor_size)

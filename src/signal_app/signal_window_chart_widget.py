@@ -45,11 +45,14 @@ class SignalWindowChartWidget(QWidget):
 
         # Create two measurement boxes above the chart.
         measurement_layout = QHBoxLayout()
+        measurement_layout.setSpacing(10)
 
          # Peak Detection box.
         self.peak_detection_box = QGroupBox("Peak Detection")
-        self.peak_detection_box.setFixedHeight(115)
+        self.peak_detection_box.setFixedHeight(145)
+
         peak_detection_layout = QVBoxLayout(self.peak_detection_box)
+        peak_detection_layout.setSpacing(2)
 
         self.peak_count_label = QLabel("Waiting for data")
         self.peak_count_label.setAlignment(Qt.AlignCenter)
@@ -65,7 +68,7 @@ class SignalWindowChartWidget(QWidget):
 
         # Tumor Measurement box.
         self.tumor_measurement_box = QGroupBox("Tumor Measurement")
-        self.tumor_measurement_box.setFixedHeight(115)
+        self.tumor_measurement_box.setFixedHeight(145)
         tumor_measurement_layout = QVBoxLayout(self.tumor_measurement_box)
 
         self.tumor_size_label = QLabel("Waiting for data")
@@ -79,8 +82,15 @@ class SignalWindowChartWidget(QWidget):
         )
         tumor_measurement_description.setAlignment(Qt.AlignCenter)
 
+        self.tumor_details_label = QLabel("")
+        self.tumor_details_label.setAlignment(Qt.AlignCenter)
+        self.tumor_details_label.setStyleSheet(
+            "font-size: 9pt;"
+        )
+
         tumor_measurement_layout.addWidget(self.tumor_size_label)
         tumor_measurement_layout.addWidget(tumor_measurement_description)
+        tumor_measurement_layout.addWidget(self.tumor_details_label)   
 
         # Add both boxes side by side.
         measurement_layout.addWidget(self.peak_detection_box)
@@ -213,11 +223,32 @@ class SignalWindowChartWidget(QWidget):
         
         self.dynamic_canvas.draw_idle()
         
-    @Slot(int)
-    def update_tumor_size(self, tumor_size: int):
-        print("UI received tumor size:", tumor_size, flush=True)
+    @Slot(object)
+    def update_tumor_size(self, tumor_size: dict):
+        print("UI received tumor measurement:", tumor_size, flush=True)
 
-        self.tumor_size_label.setText(f"{tumor_size} peaks")
+        estimated_size = tumor_size.get(
+            "estimated_tumor_size_ml",
+            0.0
+        )
+
+        if estimated_size > 0:
+            self.tumor_size_label.setText(
+                f"{estimated_size:.1f} ml"
+            )
+        else:
+            self.tumor_size_label.setText(
+                "Not calibrated"
+            )
+
+        self.tumor_details_label.setText(
+            f"Average height: "
+            f"{tumor_size['average_peak_height']:.2f}  |  "
+            f"Average width: "
+            f"{tumor_size['average_peak_width_ms']:.2f} ms\n"
+            f"Total peak area: "
+            f"{tumor_size['total_peak_area']:.2f}"
+        )
 
         #self.tumor_size_label.setText(
             #f"Tumor measurement: {tumor_size} detected peaks"

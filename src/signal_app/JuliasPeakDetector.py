@@ -90,18 +90,29 @@ class JuliasPeakDetector:
         return np.array(sorted(selected), dtype=int)
 
     # Improved SciPy peak detection
-    def detect_peaks(self, signal: np.ndarray) -> np.ndarray:
+    def detect_peaks_with_properties(
+        self,
+        signal: np.ndarray
+    ) -> tuple[np.ndarray, dict]:
+
         signal = np.asarray(signal, dtype=float)
 
+        empty_properties = {
+            "prominences": np.array([], dtype=float),
+            "widths_ms": np.array([], dtype=float),
+            "left_ips": np.array([], dtype=float),
+            "right_ips": np.array([], dtype=float)
+        }
+
         if len(signal) < 3:
-            return np.array([], dtype=int)
+            return np.array([], dtype=int), empty_properties
 
         if not np.all(np.isfinite(signal)):
             raise ValueError(
                 "Peak detection requires finite signal values."
             )
 
-        # Estimate noise from sample-to-sample differences
+        # Estimate noise from sample-to-sample differences.
         differences = np.diff(signal)
         median_difference = np.median(differences)
 
@@ -123,26 +134,45 @@ class JuliasPeakDetector:
         prominence_window = 10_001
 
         # Detect peaks using SciPy
-        peaks, _ = find_peaks(
+        peaks, properties = find_peaks(
             signal,
             prominence=prominence_threshold,
             distance=min_distance,
             wlen=prominence_window
         )
 
+        if len(peaks) == 0:
+            return np.array([], dtype=int), empty_properties
+
+
         # Measure peak widths at half prominence
-        widths = peak_widths(
+        widths, width_heights, left_ips, right_ips = peak_widths(
             signal,
             peaks,
             rel_height=0.5
-        )[0]
+        )
 
-        # Remove peaks wider than 100 milliseconds
+       # Convert widths from samples to milliseconds.
+        widths_ms = widths / 50_000 * 1000
+
+        # Remove peaks wider than 100 milliseconds.
         max_width_ms = 100
-        keep = widths / 50_000 * 1000 <= max_width_ms
+        keep = widths_ms <= max_width_ms
+
         peaks = peaks[keep]
 
-        # Print final number of detected peaks
+        peak_properties = {
+            "prominences": properties["prominences"][keep],
+            "widths_ms": widths_ms[keep],
+            "left_ips": left_ips[keep],
+            "right_ips": right_ips[keep]
+        }
+
         print("Detected peaks:", len(peaks))
 
-        return peaks.astype(int)
+        return peaks.astype(int), peak_properties
+
+    # Keep the original interface for other possible callers.
+    def detect_peaks(self, signal: np.ndarray) -> np.ndarray:
+        peaks, _ = self.detect_peaks_with_properties(signal)
+        return peaks
