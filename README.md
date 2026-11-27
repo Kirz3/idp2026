@@ -1,6 +1,9 @@
 # Signal Analyser App
 ``Software requirements``  
-This app reads data from files CSV or binary files, and converts it to a line plot graph with peak detection and tumor size measurement.
+This app reads data from CSV or binary files, and converts it to a line plot graph with peak detection and tumor size measurement. 
+The data files are meant include measurements of tumour fluorescence from a tumour detection device. 
+The line plot graph gives visual indication of tumour detection with markers at the peaks for easy reading. Amount and size of peaks is calculated into a tumour size estimation measurement.
+App includes navigation bar with buttons for scrolling and zooming the graph.
 
 ``How to run the program``
 1. Tranfer the project files to your computer in a way of your choosing.
